@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BANKAI (VPNGuard) — SOC Cyber-Terminal Prototype</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            void: '#04060a',
+            terminal: '#090e17',
+            panel: '#0d1527',
+            neonGreen: '#00ff66',
+            neonCyan: '#00f0ff',
+            breachRed: '#ff2a55',
+            alertAmber: '#ffaa00',
+            hudBorder: 'rgba(0, 255, 102, 0.22)',
+            hudBorderRed: 'rgba(255, 42, 85, 0.35)',
+            hudBorderCyan: 'rgba(0, 240, 255, 0.25)',
+          },
+          fontFamily: {
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    body {
+      background-color: #04060a;
+      color: #cbd5e1;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(0, 255, 102, 0.05) 0%, transparent 60%),
+        linear-gradient(rgba(0, 255, 102, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 102, 0.03) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
+    }
+    /* CRT Scanline overlay */
+    .scanlines::before {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      z-index: 40;
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+    .hud-box {
+      background: rgba(9, 14, 23, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(0, 255, 102, 0.2);
+      box-shadow: 0 0 15px rgba(0, 255, 102, 0.04), inset 0 0 12px rgba(0, 255, 102, 0.02);
+      position: relative;
+    }
+    .hud-box-danger {
+      background: rgba(18, 10, 15, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 42, 85, 0.35);
+      box-shadow: 0 0 20px rgba(255, 42, 85, 0.08);
+    }
+    .hud-corner::after {
+      content: "";
+      position: absolute;
+      bottom: -1px;
+      right: -1px;
+      width: 8px;
+      height: 8px;
+      border-bottom: 2px solid #00ff66;
+      border-right: 2px solid #00ff66;
+    }
+    .glow-green {
+      text-shadow: 0 0 10px rgba(0, 255, 102, 0.65);
+    }
+    .glow-red {
+      text-shadow: 0 0 10px rgba(255, 42, 85, 0.7);
+    }
+    .glow-cyan {
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090e17;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 255, 102, 0.3);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00ff66;
+    }
+    @keyframes pulseSlow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    .live-pulse {
+      animation: pulseSlow 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-300 relative scanlines flex flex-col justify-between">
+
+  <!-- TOP HUD TERMINAL BAR -->
+  <header class="border-b border-hudBorder bg-void/90 sticky top-0 z-50 px-4 py-2.5 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <!-- Title & Branding -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1.5 px-2 py-1 bg-emerald-950/40 border border-emerald-500/40 rounded text-xs text-neonGreen">
+          <span class="w-2 h-2 rounded-full bg-neonGreen live-pulse inline-block"></span>
+          <span>AIR-GAPPED</span>
+        </div>
+        <div>
+          <h1 class="text-lg md:text-xl font-extrabold tracking-wider text-white flex items-center gap-2">
+            <span class="text-neonGreen">&gt;_</span> BANKAI <span class="text-xs text-slate-400 font-normal px-2 py-0.5 border border-slate-700 rounded bg-slate-900/80">VPNGuard v1.0.4</span>
+          </h1>
+          <p class="text-[10px] text-slate-400 tracking-tight hidden sm:block">
+            AUTHENTICATION ATTACK DETECTION & COMBINATORIAL BREACH ENGINE
+          </p>
+        </div>
+      </div>
+
+      <!-- Core USPs Status Pills -->
+      <div class="flex items-center gap-2 text-xs">
+        <div class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300">
+          <span class="text-neonCyan">CORE USP:</span> 100% OFFLINE (ZERO CLOUD)
+        </div>
+        <div class="hidden md:flex items-center gap-1 px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300">
+          <span class="text-slate-500">ENGINE:</span> ISOLATION FOREST + P&C MATH
+        </div>
+        <div class="px-2.5 py-1 bg-emerald-950/30 border border-emerald-500/30 rounded text-neonGreen font-medium text-xs" id="clockDisplay">
+          2026-09-26 19:22:00 IST
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN SOC INTERFACE WRAPPER -->
+  <main class="max-w-7xl mx-auto p-4 space-y-6 flex-1 w-full">
+
+    <!-- HUD METRIC TILES GRID (4 PANELS) -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Metric 1: Telemetry Packets -->
+      <div class="hud-box hud-corner p-4 rounded-sm">
+        <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-2 mb-2">
+          <span>INGESTED_TELEMETRY</span>
+          <span class="text-neonGreen">● ONLINE</span>
+        </div>
+        <div class="text-2xl font-black text-white glow-green" id="kpiTotalEvents">1,284</div>
+        <div class="flex justify-between items-center text-[11px] text-slate-400 mt-2">
+          <span>Baseline Noise: 92.4%</span>
+          <span class="text-neonGreen font-semibold">10-Min Sliding</span>
+        </div>
+      </div>
+
+      <!-- Metric 2: P1 Critical Breaches -->
+      <div class="hud-box-danger hud-corner p-4 rounded-sm">
+        <div class="flex items-center justify-between text-xs text-red-400 border-b border-red-950 pb-2 mb-2">
+          <span>P1_CRITICAL_INCIDENTS</span>
+          <span class="text-breachRed live-pulse font-bold">● BREACH ALERT</span>
+        </div>
+        <div class="text-2xl font-black text-breachRed glow-red" id="kpiCritical">02</div>
+        <div class="flex justify-between items-center text-[11px] text-slate-400 mt-2">
+          <span>Post-Spray Success & Imp. Travel</span>
+          <span class="text-breachRed font-semibold">P1 ESCALATION</span>
+        </div>
+      </div>
+
+      <!-- Metric 3: Sprays & Brute Force Flagged -->
+      <div class="hud-box hud-corner p-4 rounded-sm">
+        <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-2 mb-2">
+          <span>MITRE_T1110_THREATS</span>
+          <span class="text-alertAmber">● T1110.003 / .001</span>
+        </div>
+        <div class="text-2xl font-black text-alertAmber" id="kpiActiveThreats">45</div>
+        <div class="flex justify-between items-center text-[11px] text-slate-400 mt-2">
+          <span>Target Accounts: 86 Distinct</span>
+          <span class="text-alertAmber font-semibold">Correlated</span>
+        </div>
+      </div>
+
+      <!-- Metric 4: SOC Detection Quality -->
+      <div class="hud-box hud-corner p-4 rounded-sm">
+        <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-2 mb-2">
+          <span>DETECTION_METRICS</span>
+          <span class="text-neonCyan">EVAL RATIO</span>
+        </div>
+        <div class="text-2xl font-black text-neonCyan glow-cyan">96.4% <span class="text-xs font-normal text-slate-400">PRECISION</span></div>
+        <div class="flex justify-between items-center text-[11px] text-slate-400 mt-2">
+          <span>Recall: <b class="text-slate-200">94.1%</b></span>
+          <span>Alert/TP: <b class="text-neonGreen">1.08</b></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- INTERACTIVE TAB CONTROLS -->
+    <div class="flex flex-wrap items-center justify-between border-b border-hudBorder/50 pb-2 gap-3">
+      <div class="flex space-x-2" id="tabButtons">
+        <button onclick="switchTab('overview')" id="tabBtn-overview" class="px-3.5 py-1.5 text-xs font-bold rounded-sm border border-neonGreen bg-neonGreen/10 text-neonGreen">
+          [01] THREAT OVERVIEW & TIMELINE
+        </button>
+        <button onclick="switchTab('incidents')" id="tabBtn-incidents" class="px-3.5 py-1.5 text-xs font-bold rounded-sm border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700">
+          [02] CORRELATED INCIDENTS & FORENSICS
+        </button>
+        <button onclick="switchTab('pnc')" id="tabBtn-pnc" class="px-3.5 py-1.5 text-xs font-bold rounded-sm border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700">
+          [03] P&C BREACH RISK ENGINE
+        </button>
+      </div>
+
+      <!-- Attack Simulation Triggers for Live Hackathon Demo -->
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] text-slate-400 hidden sm:inline">SIMULATE LIVE ATTACK:</span>
+        <button onclick="triggerSpraySimulation()" class="px-2.5 py-1 text-xs bg-red-950/60 hover:bg-red-900 border border-red-500/50 text-red-200 rounded font-semibold transition flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Inject Password Spray (45 Accounts)
+        </button>
+        <button onclick="resetDataset()" class="px-2.5 py-1 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded font-medium transition">
+          Reset Telemetry
+        </button>
+      </div>
+    </div>
+
+    <!-- TAB 1: THREAT OVERVIEW & TIMELINE -->
+    <section id="tab-overview" class="space-y-6">
+      
+      <!-- Activity-Over-Time Timeline Chart Canvas -->
+      <div class="hud-box p-4 rounded-sm">
+        <div class="flex flex-wrap items-center justify-between mb-3 border-b border-slate-800 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-neonGreen text-sm">&gt;</span>
+            <h2 class="text-sm font-bold tracking-wide text-white uppercase">Authentication Velocity & Anomaly Spikes (5-Min Windows)</h2>
+          </div>
+          <div class="flex items-center gap-4 text-xs">
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 bg-emerald-500 rounded-sm inline-block"></span>
+              <span class="text-slate-400">Success Logins</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 bg-red-500 rounded-sm inline-block"></span>
+              <span class="text-slate-400">Failures / Sprays</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-0.5 bg-yellow-400 inline-block"></span>
+              <span class="text-yellow-400 font-semibold">T1110 Spike Marker</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="relative w-full h-64 md:h-72">
+          <canvas id="timelineCanvas" class="w-full h-full block"></canvas>
+          <div id="chartTooltip" class="absolute hidden bg-slate-950/95 border border-neonGreen text-white text-[11px] p-2 rounded shadow-2xl pointer-events-none z-30"></div>
+        </div>
+
+        <div class="mt-2 text-xs text-slate-400 flex flex-wrap justify-between items-center bg-terminal/70 p-2 border border-slate-800/80 rounded">
+          <div><span class="text-neonGreen font-semibold">Active Window:</span> Rolling 5-minute tumbling aggregations over 2 hours of synthetic VPN traffic.</div>
+          <div class="text-slate-400 text-[11px] font-mono"><span class="text-alertAmber">ALERT ZONE A:</span> 08:30 Brute-Force | <span class="text-breachRed">ALERT ZONE B:</span> 09:05 Spray Sweep</div>
+        </div>
+      </div>
+
+      <!-- Quick SOC Summary Panels: Active Campaign Details & Attack Story -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- Live Alert Feed -->
+        <div class="hud-box p-4 rounded-sm lg:col-span-2">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+            <h3 class="text-xs font-bold text-white uppercase flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-red-500 animate-ping inline-block"></span>
+              Real-Time Attack Campaign Feed
+            </h3>
+            <span class="text-[11px] text-slate-500 font-mono">MITRE ATT&CK MATRIX</span>
+          </div>
+
+          <div class="space-y-2.5 overflow-y-auto max-h-72 pr-1" id="realtimeAlertList">
+            <!-- Feed items injected via JS -->
+          </div>
+        </div>
+
+        <!-- Air-Gapped Engine Diagnostics & Architecture -->
+        <div class="hud-box p-4 rounded-sm flex flex-col justify-between">
+          <div>
+            <div class="border-b border-slate-800 pb-2 mb-3">
+              <h3 class="text-xs font-bold text-neonGreen uppercase flex items-center gap-1.5">
+                <span>[OFFLINE_ENGINE]</span> PRIVACY & POLICY
+              </h3>
+            </div>
+            <div class="space-y-2.5 text-xs text-slate-300">
+              <div class="p-2 bg-slate-900/60 border border-slate-800 rounded">
+                <span class="text-neonCyan font-bold">Zero Credential Ingestion:</span> Raw passwords are never transmitted or stored. Feature extraction operates exclusively on unified hashes & attempt counts.
+              </div>
+              <div class="p-2 bg-slate-900/60 border border-slate-800 rounded">
+                <span class="text-alertAmber font-bold">Sliding Aggregation Engine:</span> Groups login telemetry across 5m, 15m, and 1h tumbling windows to catch low-and-slow campaigns that bypass static lockouts.
+              </div>
+              <div class="p-2 bg-slate-900/60 border border-slate-800 rounded">
+                <span class="text-white font-bold">Isolation Forest ML:</span> Evaluates $[U, F, R, v_{\text{req}}, v_{\text{geo}}]$ matrices to pinpoint multi-parameter anomalies without supervised training sets.
+              </div>
+            </div>
+          </div>
+          <div class="pt-3 border-t border-slate-800 mt-3 text-[11px] text-slate-500 flex justify-between">
+            <span>Memory: 18.4 MB (Local)</span>
+            <span class="text-neonGreen">0 Cloud Calls</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: CORRELATED INCIDENTS & FORENSIC INVESTIGATION TABLE -->
+    <section id="tab-incidents" class="space-y-4 hidden">
+      <div class="hud-box p-4 rounded-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-800 pb-3">
+          <div>
+            <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <span class="text-neonCyan">&gt;</span> Correlated Attack Incident Records
+            </h2>
+            <p class="text-xs text-slate-400">Events grouped into behavioral attack stories rather than isolated single failures.</p>
+          </div>
+          <!-- Filter Buttons -->
+          <div class="flex items-center gap-2 text-xs">
+            <span class="text-slate-500">SEVERITY FILTER:</span>
+            <select id="severityFilter" onchange="filterIncidents()" class="bg-slate-900 text-slate-200 border border-slate-700 px-2.5 py-1 rounded text-xs focus:outline-none focus:border-neonGreen">
+              <option value="ALL">All Severities (P1-P4)</option>
+              <option value="P1">P1 - Critical</option>
+              <option value="P2">P2 - High</option>
+              <option value="P3">P3 - Medium</option>
+              <option value="P4">P4 - Low</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Incident Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 font-bold bg-slate-950/60">
+                <th class="py-2.5 px-3">INCIDENT ID</th>
+                <th class="py-2.5 px-3">TIMESTAMP</th>
+                <th class="py-2.5 px-3">ATTACKING IP / SUBNET</th>
+                <th class="py-2.5 px-3">TARGET SCOPE</th>
+                <th class="py-2.5 px-3">MITRE ATT&CK</th>
+                <th class="py-2.5 px-3">SEVERITY</th>
+                <th class="py-2.5 px-3">RISK SCORE</th>
+                <th class="py-2.5 px-3 text-right">ACTION</th>
+              </tr>
+            </thead>
+            <tbody id="incidentTableBody" class="divide-y divide-slate-800/60 font-mono">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: P&C BREACH RISK ENGINE (COMBINATORIAL CALCULATOR) -->
+    <section id="tab-pnc" class="space-y-6 hidden">
+      <div class="hud-box p-5 rounded-sm">
+        <div class="border-b border-slate-800 pb-3 mb-4 flex flex-wrap justify-between items-center">
+          <div>
+            <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <span class="text-neonGreen">&gt;</span> Combinatorial Permutations & Breach Probability Engine
+            </h2>
+            <p class="text-xs text-slate-400">Mathematical modeling of enterprise directory attack spaces based on discrete P&C formulations.</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 bg-emerald-950/40 border border-emerald-500/30 text-neonGreen rounded font-mono">
+            P(compromise) = 1 - (1 - k/M)^N
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Parameter Sliders -->
+          <div class="space-y-4 lg:col-span-2">
+            <!-- Slider 1: Directory User Accounts (N) -->
+            <div class="p-3 bg-slate-950/70 border border-slate-800 rounded">
+              <div class="flex justify-between items-center text-xs mb-1.5">
+                <span class="font-bold text-slate-200">Directory User Accounts (N):</span>
+                <span class="text-neonGreen font-mono font-bold" id="valN">500</span>
+              </div>
+              <input type="range" id="sliderN" min="50" max="5000" step="50" value="500" oninput="calculatePnC()" class="w-full accent-neonGreen cursor-pointer">
+              <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                <span>50 Users (Small Org)</span>
+                <span>5,000 Users (Enterprise)</span>
+              </div>
+            </div>
+
+            <!-- Slider 2: Sprayed Passwords per User (k) -->
+            <div class="p-3 bg-slate-950/70 border border-slate-800 rounded">
+              <div class="flex justify-between items-center text-xs mb-1.5">
+                <span class="font-bold text-slate-200">Weak Passwords Sprayed per Account (k):</span>
+                <span class="text-alertAmber font-mono font-bold" id="valK">3</span>
+              </div>
+              <input type="range" id="sliderK" min="1" max="25" step="1" value="3" oninput="calculatePnC()" class="w-full accent-amber-400 cursor-pointer">
+              <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                <span>1 Attempt (Stealth)</span>
+                <span>25 Attempts (Lockout Risk)</span>
+              </div>
+            </div>
+
+            <!-- Slider 3: Weak Dictionary Size (M) -->
+            <div class="p-3 bg-slate-950/70 border border-slate-800 rounded">
+              <div class="flex justify-between items-center text-xs mb-1.5">
+                <span class="font-bold text-slate-200">Common Weak Password Dictionary Size (M):</span>
+                <span class="text-neonCyan font-mono font-bold" id="valM">1000</span>
+              </div>
+              <input type="range" id="sliderM" min="100" max="10000" step="100" value="1000" oninput="calculatePnC()" class="w-full accent-cyan-400 cursor-pointer">
+              <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                <span>100 Passwords</span>
+                <span>10,000 Passwords</span>
+              </div>
+            </div>
+
+            <!-- Discrete Math Formulations Explanation Box -->
+            <div class="p-3 bg-terminal border border-slate-800 rounded text-xs space-y-1.5">
+              <div class="text-slate-400 font-bold text-[11px] uppercase">Combinatorial Breakdown:</div>
+              <div class="text-slate-300">
+                • <b>Permutation Search Space:</b> For an 8-character alphanumeric password, \( P = 62^8 \approx 2.18 \times 10^{14} \) combinations.
+              </div>
+              <div class="text-slate-300">
+                • <b>Spraying Combinations Tested:</b> \( C_{\text{spray}} = \binom{N}{1} \times \binom{k}{1} = N \cdot k \) target-password pairs.
+              </div>
+              <div class="text-slate-300">
+                • <b>Individual Guess Probability:</b> \( p = \frac{k}{M} \). Across \( N \) independent accounts, at least one breach occurs with probability \( P_{\text{breach}} = 1 - (1 - p)^N \).
+              </div>
+            </div>
+          </div>
+
+          <!-- Probability Gauge & Risk Summary Card -->
+          <div class="hud-box p-4 rounded-sm flex flex-col justify-between items-center text-center">
+            <div class="w-full border-b border-slate-800 pb-2">
+              <span class="text-xs font-bold text-slate-400 uppercase">Systemic Breach Probability</span>
+            </div>
+
+            <div class="my-4 relative flex items-center justify-center">
+              <!-- Radial circle progress mockup -->
+              <div class="w-40 h-40 rounded-full border-4 border-slate-800 flex flex-col items-center justify-center relative shadow-inner" id="gaugeBorder">
+                <span class="text-3xl font-extrabold text-neonGreen font-mono glow-green" id="resProb">77.7%</span>
+                <span class="text-[10px] text-slate-400 mt-1 uppercase" id="resRiskTier">ELEVATED RISK</span>
+              </div>
+            </div>
+
+            <div class="w-full space-y-2 text-xs text-left bg-slate-950/70 p-3 rounded border border-slate-800">
+              <div class="flex justify-between">
+                <span class="text-slate-400">Total Tested Pairs (C):</span>
+                <span class="text-white font-mono font-bold" id="resCombinations">1,500</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Single Account Risk (p):</span>
+                <span class="text-white font-mono font-bold" id="resSingleRisk">0.30%</span>
+              </div>
+              <div class="flex justify-between border-t border-slate-800 pt-1.5">
+                <span class="text-slate-400">Recommended Action:</span>
+                <span class="text-alertAmber font-semibold" id="resAction">Enforce FIDO2 / MFA</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FORENSIC INVESTIGATION MODAL (DRILL-DOWN DRAWER) -->
+  <div id="investigationModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="hud-box max-w-3xl w-full rounded p-5 relative border border-neonGreen/40 shadow-2xl">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-neonGreen font-bold">&gt;_ FORENSIC EVIDENCE DOSSIER</span>
+          <span class="text-xs px-2 py-0.5 bg-red-950/80 border border-red-500 text-red-300 rounded font-mono" id="modalIncidentId">INC-8492</span>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-lg font-bold px-2">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="space-y-4 text-xs">
+        <!-- Highlights Row -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="p-2.5 bg-slate-950 border border-slate-800 rounded">
+            <span class="text-slate-500 block text-[10px]">SOURCE IP / ASN</span>
+            <span class="text-white font-mono font-bold" id="modalIp">198.51.100.12</span>
+          </div>
+          <div class="p-2.5 bg-slate-950 border border-slate-800 rounded">
+            <span class="text-slate-500 block text-[10px]">MITRE TECHNIQUE</span>
+            <span class="text-neonGreen font-mono font-bold" id="modalMitre">T1110.003</span>
+          </div>
+          <div class="p-2.5 bg-slate-950 border border-slate-800 rounded">
+            <span class="text-slate-500 block text-[10px]">FAILURE RATIO (R)</span>
+            <span class="text-alertAmber font-mono font-bold" id="modalRatio">95.4%</span>
+          </div>
+          <div class="p-2.5 bg-slate-950 border border-slate-800 rounded">
+            <span class="text-slate-500 block text-[10px]">VELOCITY</span>
+            <span class="text-neonCyan font-mono font-bold" id="modalVelocity">4.2 RPM</span>
+          </div>
+        </div>
+
+        <!-- Evidence Summary Story -->
+        <div class="p-3 bg-slate-950/80 border border-slate-800 rounded space-y-1.5">
+          <div class="text-neonGreen font-bold uppercase text-[11px]">Behavioral Analysis & Proof of Detection:</div>
+          <p class="text-slate-300 leading-relaxed font-mono" id="modalStory">
+            Source attempted authentications across 42 distinct corporate accounts within 10 minutes. 0 accounts triggered local lockout threshold (k &le; 3 attempts per user). Correlated into single high-confidence incident.
+          </p>
+        </div>
+
+        <!-- Targeted User Scope List -->
+        <div>
+          <div class="flex justify-between items-center mb-1 text-slate-400 text-[11px]">
+            <span>TARGETED ACCOUNTS (EXPANDED VECTOR):</span>
+            <span class="text-slate-500" id="modalUserCount">42 Accounts</span>
+          </div>
+          <div class="p-2.5 bg-slate-950 border border-slate-800 rounded font-mono text-slate-300 max-h-24 overflow-y-auto" id="modalUserList">
+            user_001@company.com, user_002@company.com, user_003@company.com...
+          </div>
+        </div>
+
+        <!-- Raw Schema Telemetry Log Preview -->
+        <div>
+          <span class="text-slate-400 block mb-1 text-[11px]">UNIFIED NORMALIZED LOG TRACE (SAMPLE):</span>
+          <pre class="p-2 bg-black/90 border border-slate-800 rounded text-[10px] text-emerald-400 overflow-x-auto font-mono" id="modalRawLog">
+{"timestamp": "2026-09-26T09:05:12Z", "src_ip": "198.51.100.12", "user": "user_023", "status": "FAILURE", "method": "VPN_RADIUS", "country": "Germany", "mfa_prompted": false}
+          </pre>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="mt-5 pt-3 border-t border-slate-800 flex justify-between items-center text-xs">
+        <span class="text-slate-500 font-mono">100% OFFLINE INVESTIGATION EVIDENCE</span>
+        <div class="flex gap-2">
+          <button onclick="closeModal()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 rounded">Close</button>
+          <button onclick="containIncident()" class="px-3 py-1.5 bg-red-950 hover:bg-red-900 text-red-200 border border-red-500 rounded font-semibold">Isolate IP on Firewall</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUD STATUS FOOTER -->
+  <footer class="border-t border-hudBorder/40 bg-void/90 py-2.5 px-4 text-xs text-slate-500 mt-6">
+    <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-neonGreen"></span>
+        <span class="text-slate-400 font-mono">BANKAI (VPNGuard) &bull; Prototype for Hackathon Presentation</span>
+      </div>
+      <div class="flex items-center gap-4 text-[11px]">
+        <span>Precision: <strong class="text-slate-300">96.4%</strong></span>
+        <span>Recall: <strong class="text-slate-300">94.1%</strong></span>
+        <span>Alert-to-TP: <strong class="text-neonGreen">1.08</strong></span>
+        <span class="text-slate-600">|</span>
+        <span class="text-slate-400">Zero Cloud Egress Guaranteed</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- PROTOTYPE APPLICATION LOGIC (DATASET, SLIDING WINDOWS & CHARTS) -->
+  <script>
+    // State Store
+    const state = {
+      activeTab: 'overview',
+      incidents: [
+        {
+          id: 'INC-8492',
+          timestamp: '09:05:12',
+          sourceIp: '198.51.100.12',
+          country: 'Germany',
+          scope: '42 Accounts (Low-and-Slow)',
+          technique: 'T1110.003 (Password Spraying)',
+          severity: 'P2',
+          riskScore: 74,
+          failureRatio: '95.4%',
+          velocity: '4.2 RPM',
+          users: ['user_001', 'user_002', 'user_003', 'user_004', 'user_005', 'user_006', 'user_007', 'user_008', 'user_009', 'user_010', 'user_011', 'user_012', 'user_013', 'user_014', 'user_015'],
+          story: 'Distributed password spray targeting 42 distinct user accounts within 10 minutes. Kept attempts at 1-2 per user to evade traditional per-account lockout triggers. Isolated by sliding-window target-account dispersion check.'
+        },
+        {
+          id: 'INC-8493',
+          timestamp: '08:30:45',
+          sourceIp: '203.0.113.45',
+          country: 'Russia',
+          scope: 'user_007@company.com (Single Target)',
+          technique: 'T1110.001 (Classic Brute Force)',
+          severity: 'P2',
+          riskScore: 68,
+          failureRatio: '97.2%',
+          velocity: '7.8 RPM',
+          users: ['user_007@company.com'],
+          story: 'High-frequency credential guessing attack against high-value executive identity. 35 failed attempts recorded within 4.5 minutes.'
+        },
+        {
+          id: 'INC-8494',
+          timestamp: '09:12:30',
+          sourceIp: '198.51.100.99',
+          country: 'United States',
+          scope: 'user_015@company.com (Compromised)',
+          technique: 'UEBA (Impossible Travel)',
+          severity: 'P1',
+          riskScore: 92,
+          failureRatio: '12.0%',
+          velocity: '0.8 RPM',
+          users: ['user_015@company.com'],
+          story: 'Successful authentication recorded from United States 15 minutes after authenticated session initiated from Delhi, India. Implied travel velocity exceeds 3,800 km/h (Physically impossible travel speed).'
+        },
+        {
+          id: 'INC-8495',
+          timestamp: '08:15:20',
+          sourceIp: '192.168.1.44',
+          country: 'India',
+          scope: 'user_032@company.com',
+          technique: 'Statistical Typo (Normal)',
+          severity: 'P4',
+          riskScore: 18,
+          failureRatio: '33.3%',
+          velocity: '0.3 RPM',
+          users: ['user_032@company.com'],
+          story: 'Single user with 2 consecutive password typos followed by valid MFA entry. Classified as benign noise floor by sliding-window baseline.'
+        },
+        {
+          id: 'INC-8496',
+          timestamp: '08:48:10',
+          sourceIp: '185.220.101.5',
+          country: 'Tor Exit Node',
+          scope: '14 Accounts',
+          technique: 'T1110.003 (Password Spraying)',
+          severity: 'P2',
+          riskScore: 71,
+          failureRatio: '100.0%',
+          velocity: '2.8 RPM',
+          users: ['user_040', 'user_041', 'user_042', 'user_043', 'user_044', 'user_045'],
+          story: 'Anonymized Tor node attempting fixed password spray against engineering accounts. Flagged through combined ASN reputation and account spread metric.'
+        }
+      ],
+      timeWindows: [
+        { time: '08:00', success: 62, failure: 4, hasAttack: false },
+        { time: '08:05', success: 75, failure: 6, hasAttack: false },
+        { time: '08:10', success: 68, failure: 5, hasAttack: false },
+        { time: '08:15', success: 82, failure: 7, hasAttack: false },
+        { time: '08:20', success: 70, failure: 3, hasAttack: false },
+        { time: '08:25', success: 64, failure: 5, hasAttack: false },
+        { time: '08:30', success: 58, failure: 38, hasAttack: true, label: 'T1110.001 Brute Force (user_007)' },
+        { time: '08:35', success: 60, failure: 8, hasAttack: false },
+        { time: '08:40', success: 72, failure: 4, hasAttack: false },
+        { time: '08:45', success: 69, failure: 18, hasAttack: true, label: 'Tor Spray Sweep' },
+        { time: '08:50', success: 85, failure: 6, hasAttack: false },
+        { time: '08:55', success: 77, failure: 5, hasAttack: false },
+        { time: '09:00', success: 90, failure: 7, hasAttack: false },
+        { time: '09:05', success: 62, failure: 48, hasAttack: true, label: 'T1110.003 Password Spray (42 Accounts)' },
+        { time: '09:10', success: 80, failure: 9, hasAttack: false },
+        { time: '09:15', success: 84, failure: 4, hasAttack: true, label: 'Impossible Travel Breach (user_015)' },
+        { time: '09:20', success: 71, failure: 3, hasAttack: false }
+      ]
+    };
+
+    // Tab Navigation
+    function switchTab(tabId) {
+      state.activeTab = tabId;
+      ['overview', 'incidents', 'pnc'].forEach(id => {
+        document.getElementById(`tab-${id}`).classList.toggle('hidden', id !== tabId);
+        const btn = document.getElementById(`tabBtn-${id}`);
+        if (id === tabId) {
+          btn.className = "px-3.5 py-1.5 text-xs font-bold rounded-sm border border-neonGreen bg-neonGreen/10 text-neonGreen";
+        } else {
+          btn.className = "px-3.5 py-1.5 text-xs font-bold rounded-sm border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700";
+        }
+      });
+      if (tabId === 'overview') {
+        renderCanvasTimeline();
+      }
+    }
+
+    // Render Canvas Time Series Chart
+    function renderCanvasTimeline() {
+      const canvas = document.getElementById('timelineCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      
+      // Auto-scale canvas resolution
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const width = rect.width;
+      const height = rect.height;
+      const padding = { top: 25, right: 20, bottom: 35, left: 45 };
+
+      ctx.clearRect(0, 0, width, height);
+
+      // Grid Lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let y = padding.top; y <= height - padding.bottom; y += 35) {
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(width - padding.right, y);
+        ctx.stroke();
+      }
+
+      const items = state.timeWindows;
+      const chartW = width - padding.left - padding.right;
+      const chartH = height - padding.top - padding.bottom;
+      const maxVal = 100;
+      const barWidth = Math.max(6, Math.floor(chartW / items.length) - 8);
+
+      items.forEach((item, index) => {
+        const x = padding.left + index * (chartW / items.length) + (chartW / items.length - barWidth) / 2;
+        
+        // Success bar (Green)
+        const hSuccess = (item.success / maxVal) * chartH;
+        const ySuccess = height - padding.bottom - hSuccess;
+        ctx.fillStyle = '#00ff66';
+        ctx.shadowColor = 'rgba(0, 255, 102, 0.3)';
+        ctx.shadowBlur = 4;
+        ctx.fillRect(x, ySuccess, barWidth / 2 - 1, hSuccess);
+
+        // Failure bar (Red)
+        const hFailure = (item.failure / maxVal) * chartH;
+        const yFailure = height - padding.bottom - hFailure;
+        ctx.fillStyle = item.hasAttack ? '#ff2a55' : '#ef4444';
+        ctx.shadowColor = item.hasAttack ? 'rgba(255, 42, 85, 0.6)' : 'rgba(239, 68, 68, 0.2)';
+        ctx.shadowBlur = item.hasAttack ? 10 : 2;
+        ctx.fillRect(x + barWidth / 2, yFailure, barWidth / 2 - 1, hFailure);
+
+        // Attack Zone Indicator marker
+        if (item.hasAttack) {
+          ctx.strokeStyle = '#ffaa00';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x - 2, padding.top - 8);
+          ctx.lineTo(x + barWidth + 2, padding.top - 8);
+          ctx.stroke();
+
+          // Small triangle marker
+          ctx.fillStyle = '#ffaa00';
+          ctx.beginPath();
+          ctx.moveTo(x + barWidth/2, padding.top - 2);
+          ctx.lineTo(x + barWidth/2 - 4, padding.top - 7);
+          ctx.lineTo(x + barWidth/2 + 4, padding.top - 7);
+          ctx.fill();
+        }
+
+        // X-axis timestamps
+        if (index % 2 === 0) {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = '#64748b';
+          ctx.font = '10px "JetBrains Mono"';
+          ctx.fillText(item.time, x - 4, height - 12);
+        }
+      });
+
+      // Y-axis labels
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#64748b';
+      ctx.font = '10px "JetBrains Mono"';
+      ctx.fillText('100', 12, padding.top + 5);
+      ctx.fillText('50', 16, padding.top + chartH / 2 + 5);
+      ctx.fillText('0', 22, height - padding.bottom);
+    }
+
+    // Populate Realtime Alert Feed
+    function populateFeed() {
+      const feed = document.getElementById('realtimeAlertList');
+      if (!feed) return;
+      feed.innerHTML = '';
+
+      state.incidents.slice(0, 4).forEach(inc => {
+        const isCritical = inc.severity === 'P1';
+        const item = document.createElement('div');
+        item.className = `p-2.5 rounded border ${isCritical ? 'border-red-500/50 bg-red-950/20' : 'border-slate-800 bg-slate-950/60'} flex items-start justify-between gap-3 text-xs`;
+        item.innerHTML = `
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold ${isCritical ? 'bg-red-950 border border-red-500 text-red-200' : 'bg-amber-950/60 border border-amber-500/60 text-amber-200'}">${inc.severity}</span>
+              <span class="text-white font-bold font-mono">${inc.technique}</span>
+              <span class="text-slate-500 text-[10px]">${inc.timestamp}</span>
+            </div>
+            <p class="text-slate-400 text-[11px] leading-tight font-mono">${inc.story.substring(0, 95)}...</p>
+          </div>
+          <button onclick="openModal('${inc.id}')" class="px-2 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded text-[11px] font-medium whitespace-nowrap">
+            Investigate &rarr;
+          </button>
+        `;
+        feed.appendChild(item);
+      });
+    }
+
+    // Populate Incident Table
+    function populateIncidentTable(filter = 'ALL') {
+      const tbody = document.getElementById('incidentTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      const filtered = filter === 'ALL' 
+        ? state.incidents 
+        : state.incidents.filter(i => i.severity === filter);
+
+      filtered.forEach(inc => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-900/60 transition";
+
+        let badgeClass = "text-slate-400 bg-slate-900 border-slate-700";
+        if (inc.severity === 'P1') badgeClass = "text-red-300 bg-red-950/80 border-red-500";
+        if (inc.severity === 'P2') badgeClass = "text-amber-300 bg-amber-950/80 border-amber-500";
+        if (inc.severity === 'P3') badgeClass = "text-yellow-300 bg-yellow-950/60 border-yellow-600";
+        if (inc.severity === 'P4') badgeClass = "text-blue-300 bg-blue-950/60 border-blue-600";
+
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-bold text-white">${inc.id}</td>
+          <td class="py-2.5 px-3 text-slate-400">${inc.timestamp}</td>
+          <td class="py-2.5 px-3 text-neonCyan font-bold">${inc.sourceIp} <span class="text-[10px] text-slate-500">(${inc.country})</span></td>
+          <td class="py-2.5 px-3 text-slate-300">${inc.scope}</td>
+          <td class="py-2.5 px-3 text-slate-200">${inc.technique}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded border text-[10px] font-bold ${badgeClass}">${inc.severity}</span>
+          </td>
+          <td class="py-2.5 px-3 font-bold ${inc.riskScore > 70 ? 'text-red-400' : 'text-slate-300'}">${inc.riskScore}/100</td>
+          <td class="py-2.5 px-3 text-right">
+            <button onclick="openModal('${inc.id}')" class="px-2 py-1 bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-500/40 text-neonGreen rounded text-[11px]">
+              Dossier
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterIncidents() {
+      const val = document.getElementById('severityFilter').value;
+      populateIncidentTable(val);
+    }
+
+    // Modal Dossier Logic
+    function openModal(incidentId) {
+      const inc = state.incidents.find(i => i.id === incidentId);
+      if (!inc) return;
+
+      document.getElementById('modalIncidentId').innerText = inc.id;
+      document.getElementById('modalIp').innerText = `${inc.sourceIp} (${inc.country})`;
+      document.getElementById('modalMitre').innerText = inc.technique;
+      document.getElementById('modalRatio').innerText = inc.failureRatio;
+      document.getElementById('modalVelocity').innerText = inc.velocity;
+      document.getElementById('modalStory').innerText = inc.story;
+      document.getElementById('modalUserCount').innerText = `${inc.users.length} Account Identifiers`;
+      document.getElementById('modalUserList').innerText = inc.users.join(', ');
+      document.getElementById('modalRawLog').innerText = JSON.stringify({
+        incident_id: inc.id,
+        detection_timestamp: `2026-09-26T${inc.timestamp}Z`,
+        source_ip: inc.sourceIp,
+        country: inc.country,
+        observed_technique: inc.technique,
+        severity_tier: inc.severity,
+        risk_score: inc.riskScore,
+        sliding_window: "10min_tumbling",
+        mfa_challenge_status: "BYPASSED_OR_FAIL",
+        zero_cloud_signature: "VERIFIED_OFFLINE"
+      }, null, 2);
+
+      document.getElementById('investigationModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('investigationModal').classList.add('hidden');
+    }
+
+    function containIncident() {
+      alert("ACTION EXECUTED: Local iptables firewall rule dispatched to null-route source IP on internal VPN gateway (Offline script execution).");
+      closeModal();
+    }
+
+    // P&C Mathematical Breach Calculator
+    function calculatePnC() {
+      const N = parseInt(document.getElementById('sliderN').value, 10);
+      const k = parseInt(document.getElementById('sliderK').value, 10);
+      const M = parseInt(document.getElementById('sliderM').value, 10);
+
+      document.getElementById('valN').innerText = N.toLocaleString();
+      document.getElementById('valK').innerText = k;
+      document.getElementById('valM').innerText = M.toLocaleString();
+
+      const combinations = N * k;
+      const p_single = k / M;
+      const p_compromise = 1.0 - Math.pow(1.0 - p_single, N);
+      const pct = (p_compromise * 100).toFixed(1);
+
+      document.getElementById('resCombinations').innerText = combinations.toLocaleString();
+      document.getElementById('resSingleRisk').innerText = `${(p_single * 100).toFixed(2)}%`;
+      document.getElementById('resProb').innerText = `${pct}%`;
+
+      const riskTierEl = document.getElementById('resRiskTier');
+      const actionEl = document.getElementById('resAction');
+      const gaugeBorder = document.getElementById('gaugeBorder');
+
+      if (p_compromise > 0.70) {
+        riskTierEl.innerText = "CRITICAL BREACH RISK";
+        riskTierEl.className = "text-[10px] text-breachRed mt-1 uppercase font-bold";
+        actionEl.innerText = "Mandate FIDO2 Hardware Keys";
+        actionEl.className = "text-breachRed font-bold";
+        gaugeBorder.style.borderColor = "#ff2a55";
+      } else if (p_compromise > 0.35) {
+        riskTierEl.innerText = "ELEVATED VULNERABILITY";
+        riskTierEl.className = "text-[10px] text-alertAmber mt-1 uppercase font-bold";
+        actionEl.innerText = "Enforce MFA & Lockout Rule";
+        actionEl.className = "text-alertAmber font-semibold";
+        gaugeBorder.style.borderColor = "#ffaa00";
+      } else {
+        riskTierEl.innerText = "LOW ATTACK EXPOSURE";
+        riskTierEl.className = "text-[10px] text-neonGreen mt-1 uppercase font-bold";
+        actionEl.innerText = "Routine Baseline Monitoring";
+        actionEl.className = "text-neonGreen font-semibold";
+        gaugeBorder.style.borderColor = "#00ff66";
+      }
+    }
+
+    // Interactive Demo Attack Simulation
+    function triggerSpraySimulation() {
+      // Append a live attack spike to timeline
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      state.timeWindows.push({
+        time: timeStr,
+        success: 4,
+        failure: 65,
+        hasAttack: true,
+        label: 'LIVE DEMO: Planted Spray Sweep (45 Accounts)'
+      });
+      if (state.timeWindows.length > 18) state.timeWindows.shift();
+
+      // Add high-priority incident
+      const newId = `INC-${Math.floor(1000 + Math.random() * 9000)}`;
+      state.incidents.unshift({
+        id: newId,
+        timestamp: `${timeStr}:04`,
+        sourceIp: '185.190.140.22',
+        country: 'Netherlands',
+        scope: '45 Accounts (Planted Sweep)',
+        technique: 'T1110.003 (Password Spraying)',
+        severity: 'P2',
+        riskScore: 82,
+        failureRatio: '94.2%',
+        velocity: '6.5 RPM',
+        users: ['admin', 'j.doe', 'accounting', 'finance', 'c.smith', 'vp_sales', 'db_backup', 'dev_ops'],
+        story: 'Real-time planted attack sweep executed. Tested common password [Welcome2026!] across 45 unique employee directories in under 6 minutes.'
+      });
+
+      // Update KPIs
+      const curEvents = parseInt(document.getElementById('kpiTotalEvents').innerText.replace(',', ''), 10);
+      document.getElementById('kpiTotalEvents').innerText = (curEvents + 69).toLocaleString();
+
+      const curThreats = parseInt(document.getElementById('kpiActiveThreats').innerText, 10);
+      document.getElementById('kpiActiveThreats').innerText = curThreats + 1;
+
+      renderCanvasTimeline();
+      populateFeed();
+      populateIncidentTable();
+
+      alert(`⚡ SIMULATION INJECTED!\n\nPlanted Password Spray (MITRE T1110.003) detected across 45 accounts.\nIncident ${newId} has been created and mapped.`);
+    }
+
+    function resetDataset() {
+      location.reload();
+    }
+
+    // Initialize on window load
+    window.addEventListener('load', () => {
+      renderCanvasTimeline();
+      populateFeed();
+      populateIncidentTable();
+      calculatePnC();
+
+      // Keep timeline responsive
+      window.addEventListener('resize', () => {
+        renderCanvasTimeline();
+      });
+    });
+  </script>
+</body>
+</html>
