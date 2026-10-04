@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BANKAI — VPNGuard</title>
+  <meta name="description" content="BANKAI air-gapped authentication attack detection and combinatorial breach analysis platform." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --black: #050505;
+      --black-2: #090909;
+      --panel: #0c0f0d;
+      --panel-2: #101410;
+      --green: #00ff66;
+      --green-soft: #00cc55;
+      --white: #f4f7f5;
+      --muted: #737a75;
+      --muted-2: #9aa19c;
+      --red: #ff3158;
+      --amber: #ffb000;
+      --cyan: #00e5ff;
+      --purple: #a855f7;
+      --border: rgba(0,255,102,.20);
+      --border-strong: rgba(0,255,102,.45);
+      --border-dim: rgba(255,255,255,.10);
+      --danger-border: rgba(255,49,88,.38);
+      --max: 1440px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--white);
+      background:
+        radial-gradient(circle at 50% -15%, rgba(0,255,102,.085), transparent 34%),
+        linear-gradient(rgba(0,255,102,.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,102,.022) 1px, transparent 1px),
+        var(--black);
+      background-size: auto, 48px 48px, 48px 48px, auto;
+      font-family: "JetBrains Mono", monospace;
+      overflow-x: hidden;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      opacity: .16;
+      background:
+        linear-gradient(rgba(255,255,255,0) 50%, rgba(0,0,0,.18) 50%),
+        linear-gradient(90deg, rgba(255,0,0,.015), rgba(0,255,0,.01), rgba(0,0,255,.015));
+      background-size: 100% 4px, 7px 100%;
+      mix-blend-mode: screen;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    button, select, input { font: inherit; }
+
+    button { cursor: pointer; }
+
+    .container {
+      width: min(calc(100% - 48px), var(--max));
+      margin-inline: auto;
+    }
+
+    .eyebrow {
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .section-label::after {
+      content: "";
+      height: 1px;
+      flex: 1;
+      background: linear-gradient(90deg, var(--border-strong), transparent);
+    }
+
+    .section-label span {
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: .12em;
+    }
+
+    .mono-muted { color: var(--muted); }
+    .green { color: var(--green); }
+    .red { color: var(--red); }
+    .amber { color: var(--amber); }
+    .cyan { color: var(--cyan); }
+    .purple { color: var(--purple); }
+
+    .glow-green { text-shadow: 0 0 22px rgba(0,255,102,.32); }
+    .glow-red { text-shadow: 0 0 22px rgba(255,49,88,.25); }
+    .glow-cyan { text-shadow: 0 0 22px rgba(0,229,255,.25); }
+
+    /* NAV */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 72px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(5,5,5,.90);
+      backdrop-filter: blur(16px);
+    }
+
+    .nav-inner {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: max-content;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-size: 14px;
+      font-weight: 800;
+      box-shadow: inset 0 0 16px rgba(0,255,102,.08), 0 0 20px rgba(0,255,102,.04);
+    }
+
+    .brand-name {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -.04em;
+    }
+
+    .brand-version {
+      display: block;
+      color: var(--muted);
+      font-size: 8px;
+      letter-spacing: .08em;
+      margin-top: 2px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      color: var(--muted-2);
+      font-size: 10px;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+    }
+
+    .nav-links a {
+      transition: color .2s ease;
+    }
+
+    .nav-links a:hover { color: var(--green); }
+
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 9px;
+      color: var(--muted-2);
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 12px rgba(0,255,102,.8);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .35; }
+    }
+
+    .btn {
+      min-height: 38px;
+      padding: 0 16px;
+      border: 1px solid var(--border-dim);
+      background: transparent;
+      color: var(--white);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      transition: .2s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: var(--black);
+      border-color: var(--green);
+    }
+
+    .btn-primary:hover {
+      color: var(--black);
+      background: #4dff91;
+      box-shadow: 0 0 28px rgba(0,255,102,.14);
+    }
+
+    .btn-danger {
+      border-color: var(--danger-border);
+      color: var(--red);
+      background: rgba(255,49,88,.035);
+    }
+
+    .btn-danger:hover {
+      border-color: var(--red);
+      background: rgba(255,49,88,.08);
+      color: #fff;
+    }
+
+    /* HERO */
+    .hero {
+      min-height: 650px;
+      display: grid;
+      grid-template-columns: 1.35fr .65fr;
+      align-items: center;
+      gap: 60px;
+      position: relative;
+      padding: 92px 0 78px;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      width: 650px;
+      height: 650px;
+      border-radius: 50%;
+      background: rgba(0,255,102,.055);
+      filter: blur(110px);
+      top: -250px;
+      left: 25%;
+      pointer-events: none;
+    }
+
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      border: 1px solid var(--border);
+      padding: 8px 11px;
+      color: var(--muted-2);
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+
+    .hero h1 {
+      max-width: 900px;
+      margin: 0;
+      font-size: clamp(60px, 9.5vw, 145px);
+      line-height: .82;
+      letter-spacing: -.075em;
+      font-weight: 800;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero h1 span { color: var(--green); }
+
+    .hero-copy {
+      max-width: 650px;
+      margin-top: 34px;
+      color: var(--muted-2);
+      font-size: 12px;
+      line-height: 1.9;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 30px;
+      flex-wrap: wrap;
+    }
+
+    .hero-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      max-width: 720px;
+      margin-top: 52px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero-meta-item {
+      padding: 17px 18px;
+      border-right: 1px solid var(--border);
+    }
+
+    .hero-meta-item:last-child { border-right: 0; }
+
+    .hero-meta-item b {
+      display: block;
+      font-size: 10px;
+      color: var(--white);
+      margin-bottom: 5px;
+    }
+
+    .hero-meta-item span {
+      font-size: 8px;
+      color: var(--muted);
+      letter-spacing: .08em;
+    }
+
+    .hero-terminal {
+      border: 1px solid var(--border);
+      background: rgba(10,13,10,.75);
+      min-height: 300px;
+      position: relative;
+      padding: 0;
+      box-shadow: 0 0 45px rgba(0,255,102,.025);
+    }
+
+    .terminal-top {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 13px;
+      border-bottom: 1px solid var(--border);
+      font-size: 9px;
+    }
+
+    .terminal-top-left {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .terminal-top-left i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .terminal-body {
+      padding: 22px;
+      font-size: 10px;
+      line-height: 2;
+      color: var(--muted-2);
+    }
+
+    .terminal-line {
+      display: flex;
+      gap: 12px;
+    }
+
+    .terminal-line .prompt { color: var(--green); }
+
+    .terminal-bar {
+      height: 5px;
+      margin: 12px 0 18px;
+      background: #161a17;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .terminal-bar::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 76%;
+      background: var(--green);
+      box-shadow: 0 0 18px rgba(0,255,102,.45);
+    }
+
+    /* PANELS */
+    .panel {
+      background: rgba(10,13,10,.72);
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .panel::after {
+      content: "";
+      position: absolute;
+      right: -1px;
+      bottom: -1px;
+      width: 9px;
+      height: 9px;
+      border-right: 2px solid var(--green);
+      border-bottom: 2px solid var(--green);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 17px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.075);
+    }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+
+    .panel-subtitle {
+      color: var(--muted);
+      font-size: 8px;
+      margin-top: 5px;
+      line-height: 1.5;
+    }
+
+    .panel-body { padding: 20px; }
+
+    /* METRICS */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .metric {
+      min-height: 190px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      background: rgba(9,11,9,.72);
+      position: relative;
+    }
+
+    .metric.danger { border-color: var(--danger-border); }
+
+    .metric-number {
+      font-size: 42px;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: -.07em;
+      margin: 34px 0 16px;
+    }
+
+    .metric-name {
+      color: var(--muted-2);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+    }
+
+    .metric-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.075);
+      font-size: 8px;
+      color: var(--muted);
+    }
+
+    .metric-bottom {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 8px;
+      line-height: 1.5;
+    }
+
+    /* SECTION / OPERATIONS */
+    section { margin-bottom: 92px; }
+
+    .operations-grid {
+      display: grid;
+      grid-template-columns: 1.55fr .75fr;
+      gap: 12px;
+    }
+
+    .chart-wrap {
+      padding: 10px 18px 18px;
+    }
+
+    #timelineCanvas {
+      width: 100%;
+      height: 330px;
+      display: block;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      padding: 10px 0 0;
+      color: var(--muted);
+      font-size: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .legend-dot {
+      width: 16px;
+      height: 2px;
+      display: inline-block;
+    }
+
+    .feed {
+      height: 405px;
+      overflow: auto;
+    }
+
+    .feed-item {
+      padding: 15px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      transition: background .2s ease;
+    }
+
+    .feed-item:hover { background: rgba(0,255,102,.025); }
+
+    .feed-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 8px;
+      margin-bottom: 8px;
+    }
+
+    .feed-title {
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+
+    .feed-detail {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 8px;
+      line-height: 1.6;
+    }
+
+    .diagnostics {
+      display: grid;
+      gap: 10px;
+    }
+
+    .diagnostic {
+      padding: 13px;
+      border: 1px solid rgba(255,255,255,.075);
+      background: rgba(0,0,0,.18);
+      color: var(--muted-2);
+      font-size: 8px;
+      line-height: 1.7;
+    }
+
+    .diagnostic strong { color: var(--white); }
+
+    /* CONTROL BAR */
+    .control-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+      padding: 13px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 10px 12px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid rgba(255,255,255,.09);
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .tab:hover { color: var(--white); border-color: rgba(255,255,255,.2); }
+
+    .tab.active {
+      color: var(--green);
+      border-color: var(--green);
+      background: rgba(0,255,102,.045);
+    }
+
+    .simulation {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .simulation .btn { min-height: 34px; padding: 0 11px; font-size: 8px; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* INCIDENTS */
+    .filters {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    select {
+      color: var(--white);
+      background: #080a08;
+      border: 1px solid rgba(255,255,255,.13);
+      padding: 9px 11px;
+      font-size: 8px;
+      outline: none;
+    }
+
+    select:focus { border-color: var(--green); }
+
+    .table-scroll { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      min-width: 850px;
+      border-collapse: collapse;
+      font-size: 8px;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      text-align: left;
+      letter-spacing: .07em;
+      padding: 14px 13px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      text-transform: uppercase;
+    }
+
+    td {
+      padding: 15px 13px;
+      color: var(--muted-2);
+      border-bottom: 1px solid rgba(255,255,255,.055);
+    }
+
+    tbody tr:hover td { background: rgba(0,255,102,.018); color: var(--white); }
+
+    .severity {
+      display: inline-block;
+      padding: 4px 7px;
+      border: 1px solid currentColor;
+      font-size: 7px;
+      font-weight: 800;
+    }
+
+    .action-link {
+      border: 0;
+      background: transparent;
+      color: var(--green);
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    /* RISK ENGINE */
+    .risk-grid {
+      display: grid;
+      grid-template-columns: 1.35fr .65fr;
+      gap: 12px;
+    }
+
+    .sliders { display: grid; gap: 22px; }
+
+    .slider-row {
+      padding: 18px;
+      border: 1px solid rgba(255,255,255,.075);
+      background: rgba(0,0,0,.18);
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 9px;
+      font-weight: 700;
+      margin-bottom: 15px;
+    }
+
+    .slider-value { color: var(--green); }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--green);
+      cursor: pointer;
+    }
+
+    .range-meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 7px;
+      margin-top: 8px;
+    }
+
+    .formula {
+      margin-top: 16px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      background: rgba(0,255,102,.018);
+      color: var(--muted-2);
+      font-size: 9px;
+      line-height: 1.8;
+    }
+
+    .formula strong { color: var(--white); }
+
+    .risk-result {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+    }
+
+    .gauge {
+      width: 190px;
+      height: 190px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      margin: 25px auto;
+      position: relative;
+      background:
+        radial-gradient(circle, #0a0d0a 58%, transparent 59%),
+        conic-gradient(var(--green) var(--gauge, 77.7%), rgba(255,255,255,.075) 0);
+      box-shadow: 0 0 45px rgba(0,255,102,.055);
+    }
+
+    .gauge::after {
+      content: "";
+      position: absolute;
+      inset: 11px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .gauge-content { position: relative; z-index: 1; }
+
+    .probability {
+      display: block;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -.07em;
+      color: var(--green);
+    }
+
+    .risk-tier {
+      color: var(--muted);
+      font-size: 8px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-top: 5px;
+    }
+
+    .result-stats {
+      width: 100%;
+      display: grid;
+      gap: 0;
+      border: 1px solid rgba(255,255,255,.075);
+    }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.055);
+      font-size: 8px;
+      text-align: left;
+    }
+
+    .result-row:last-child { border-bottom: 0; }
+
+    .result-row span:first-child { color: var(--muted); }
+
+    /* MODAL */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0,0,0,.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      backdrop-filter: blur(8px);
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      width: min(720px, 100%);
+      border: 1px solid var(--green);
+      background: #070907;
+      box-shadow: 0 0 60px rgba(0,255,102,.10);
+    }
+
+    .modal-body {
+      padding: 24px;
+      font-size: 9px;
+      line-height: 1.9;
+      color: var(--muted-2);
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .modal-stat {
+      border: 1px solid rgba(255,255,255,.075);
+      padding: 12px;
+    }
+
+    .modal-stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 7px;
+      margin-bottom: 6px;
+    }
+
+    .modal-stat b { color: var(--white); font-size: 9px; }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      margin-top: 25px;
+    }
+
+    .footer-inner {
+      min-height: 92px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      color: var(--muted);
+      font-size: 8px;
+    }
+
+    .footer-brand { color: var(--white); font-weight: 800; }
+
+    .footer-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 1100px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-terminal { max-width: 650px; }
+      .operations-grid,
+      .risk-grid { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .nav-links { display: none; }
+    }
+
+    @media (max-width: 700px) {
+      .container { width: min(calc(100% - 28px), var(--max)); }
+      .nav { height: 64px; }
+      .nav-status { display: none; }
+      .hero { min-height: auto; padding: 70px 0 60px; gap: 45px; }
+      .hero h1 { font-size: clamp(52px, 18vw, 90px); }
+      .hero-meta { grid-template-columns: 1fr; }
+      .hero-meta-item { border-right: 0; border-bottom: 1px solid var(--border); }
+      .hero-meta-item:last-child { border-bottom: 0; }
+      .metrics { grid-template-columns: 1fr; }
+      section { margin-bottom: 65px; }
+      .control-bar { align-items: flex-start; }
+      .tabs { width: 100%; }
+      .tab { flex: 1; min-width: 130px; }
+      .panel-header { align-items: flex-start; flex-direction: column; }
+      .modal-grid { grid-template-columns: 1fr; }
+      .footer-inner { align-items: flex-start; flex-direction: column; padding: 22px 0; }
+    }
+
+    ::selection {
+      background: var(--green);
+      color: var(--black);
+    }
+
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: #070907; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,255,102,.28); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--green); }
+  </style>
+</head>
+
+<body>
+
+  <!-- =========================================================
+       NAVIGATION
+       ========================================================= -->
+  <header class="nav">
+    <div class="container nav-inner">
+      <a href="#top" class="brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <div class="brand-name">BANKAI</div>
+          <span class="brand-version">VPNGuard / v1.0.4</span>
+        </div>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#system">SYSTEM</a>
+        <a href="#threats">THREATS</a>
+        <a href="#forensics">FORENSICS</a>
+        <a href="#risk">RISK ENGINE</a>
+      </nav>
+
+      <div class="nav-status">
+        <span class="status-dot"></span>
+        AIR-GAPPED
+        <button class="btn btn-primary" onclick="scrollToSection('system')">LAUNCH DEMO</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+
+    <!-- =======================================================
+         HERO
+         ======================================================== -->
+    <div class="container">
+      <section class="hero">
+        <div>
+          <div class="hero-kicker">
+            <span class="status-dot"></span>
+            SYSTEM ONLINE / ZERO CLOUD
+          </div>
+
+          <h1>DETECT.<br><span>RESPOND.</span></h1>
+
+          <p class="hero-copy">
+            BANKAI is an air-gapped authentication security operations platform
+            built to detect coordinated credential attacks, correlate telemetry
+            into attack stories, and model systemic breach probability.
+          </p>
+
+          <div class="hero-actions">
+            <button class="btn btn-primary" onclick="scrollToSection('system')">ENTER OPERATIONS →</button>
+            <button class="btn" onclick="switchTab('risk'); scrollToSection('operations')">VIEW RISK ENGINE</button>
+          </div>
+
+          <div class="hero-meta">
+            <div class="hero-meta-item">
+              <b class="green">AIR-GAPPED</b>
+              <span>LOCAL PROCESSING</span>
+            </div>
+            <div class="hero-meta-item">
+              <b class="cyan">REAL-TIME</b>
+              <span>TELEMETRY CORRELATION</span>
+            </div>
+            <div class="hero-meta-item">
+              <b class="purple">INTELLIGENCE</b>
+              <span>ML + P&C ANALYSIS</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-terminal">
+          <div class="terminal-top">
+            <div class="terminal-top-left">
+              <i></i><span>bankai://core/status</span>
+            </div>
+            <span class="green">CONNECTED</span>
+          </div>
+
+          <div class="terminal-body">
+            <div class="terminal-line"><span class="prompt">&gt;</span><span>initializing BANKAI core...</span></div>
+            <div class="terminal-line"><span class="prompt">&gt;</span><span class="green">authentication engine: READY</span></div>
+            <div class="terminal-line"><span class="prompt">&gt;</span><span>telemetry stream: ACTIVE</span></div>
+            <div class="terminal-line"><span class="prompt">&gt;</span><span>cloud dependency: <span class="green">NONE</span></span></div>
+            <div class="terminal-line"><span class="prompt">&gt;</span><span>isolation forest: ONLINE</span></div>
+            <div class="terminal-line"><span class="prompt">&gt;</span><span>P&amp;C risk engine: ONLINE</span></div>
+
+            <div class="terminal-bar"></div>
+
+            <div class="terminal-line"><span class="prompt">&gt;</span><span>monitoring authentication perimeter</span></div>
+            <div class="terminal-line"><span class="prompt">&gt;</span><span class="green">awaiting telemetry...</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- =======================================================
+         SYSTEM METRICS
+         ======================================================== -->
+    <section id="system">
+      <div class="container">
+        <div class="section-label">
+          <b class="eyebrow">01 / SYSTEM METRICS</b>
+          <span>LIVE OPERATIONS SNAPSHOT</span>
+        </div>
+
+        <div class="metrics">
+          <article class="metric">
+            <div class="metric-top">
+              <span>INGESTED_TELEMETRY</span>
+              <span class="green">● ONLINE</span>
+            </div>
+            <div class="metric-number green glow-green" id="kpiTotalEvents">1,284</div>
+            <div class="metric-bottom">
+              <span>Baseline Noise: 92.4%</span>
+              <span class="green">10-MIN WINDOW</span>
+            </div>
+          </article>
+
+          <article class="metric danger">
+            <div class="metric-top">
+              <span>P1_CRITICAL_INCIDENTS</span>
+              <span class="red">● ALERT</span>
+            </div>
+            <div class="metric-number red glow-red" id="kpiCritical">02</div>
+            <div class="metric-bottom">
+              <span>Post-spray / travel</span>
+              <span class="red">P1</span>
+            </div>
+          </article>
+
+          <article class="metric">
+            <div class="metric-top">
+              <span>MITRE_T1110_THREATS</span>
+              <span class="amber">● T1110</span>
+            </div>
+            <div class="metric-number amber" id="kpiActiveThreats">45</div>
+            <div class="metric-bottom">
+              <span>86 target accounts</span>
+              <span class="amber">CORRELATED</span>
+            </div>
+          </article>
+
+          <article class="metric">
+            <div class="metric-top">
+              <span>DETECTION_METRICS</span>
+              <span class="cyan">EVAL RATIO</span>
+            </div>
+            <div class="metric-number cyan glow-cyan">96.4%</div>
+            <div class="metric-bottom">
+              <span>Recall: <b style="color:#fff">94.1%</b></span>
+              <span>Alert/TP: 1.08</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- =======================================================
+         OPERATIONS / THREATS
+         ======================================================== -->
+    <section id="operations">
+      <div class="container">
+        <div class="section-label" id="threats">
+          <b class="eyebrow">02 / THREAT INTELLIGENCE</b>
+          <span>AUTHENTICATION PERIMETER</span>
+        </div>
+
+        <div class="control-bar">
+          <div class="tabs">
+            <button class="tab active" id="tab-overview" onclick="switchTab('overview')">[01] THREAT INTELLIGENCE</button>
+            <button class="tab" id="tab-incidents" onclick="switchTab('incidents')">[02] INCIDENT FORENSICS</button>
+            <button class="tab" id="tab-risk" onclick="switchTab('risk')">[03] BREACH RISK ENGINE</button>
+          </div>
+
+          <div class="simulation">
+            <button class="btn btn-danger" onclick="triggerSpraySimulation()">● INJECT PASSWORD SPRAY</button>
+            <button class="btn" onclick="resetDataset()">RESET TELEMETRY</button>
+          </div>
+        </div>
+
+        <!-- OVERVIEW -->
+        <div class="tab-panel active" id="panel-overview">
+          <div class="operations-grid">
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">AUTHENTICATION VELOCITY</div>
+                  <div class="panel-subtitle">5-minute aggregation / 2-hour synthetic VPN traffic</div>
+                </div>
+                <span class="eyebrow">LIVE STREAM</span>
+              </div>
+
+              <div class="chart-wrap">
+                <canvas id="timelineCanvas"></canvas>
+                <div class="legend">
+                  <span class="legend-item"><i class="legend-dot" style="background:#00ff66"></i>SUCCESS LOGINS</span>
+                  <span class="legend-item"><i class="legend-dot" style="background:#ff3158"></i>FAILURES / SPRAYS</span>
+                  <span class="legend-item"><i class="legend-dot" style="background:#ffb000"></i>T1110 SPIKE</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">LIVE OPERATIONS</div>
+                  <div class="panel-subtitle">MITRE ATT&amp;CK / correlated events</div>
+                </div>
+                <span class="green" style="font-size:8px">● LIVE</span>
+              </div>
+
+              <div class="feed" id="realtimeAlertList"></div>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title green">[OFFLINE_ENGINE] PRIVACY &amp; POLICY</div>
+                <div class="panel-subtitle">Architecture guarantees / local diagnostics</div>
+              </div>
+              <span class="green" style="font-size:8px">0 CLOUD CALLS</span>
+            </div>
+
+            <div class="panel-body diagnostics" style="grid-template-columns:repeat(3,1fr)">
+              <div class="diagnostic">
+                <strong class="cyan">ZERO CREDENTIAL INGESTION</strong><br>
+                Raw passwords are never transmitted or stored. Feature extraction operates on hashes and attempt counts.
+              </div>
+              <div class="diagnostic">
+                <strong class="amber">SLIDING AGGREGATION</strong><br>
+                5m, 15m and 1h windows expose low-and-slow campaigns that evade static lockouts.
+              </div>
+              <div class="diagnostic">
+                <strong class="purple">ISOLATION FOREST ML</strong><br>
+                Multi-parameter anomaly scoring evaluates authentication velocity, failure ratios and geographic signals.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INCIDENTS -->
+        <div class="tab-panel" id="panel-incidents">
+          <div class="panel" id="forensics">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">CORRELATED ATTACK INCIDENT RECORDS</div>
+                <div class="panel-subtitle">Behavioral attack stories instead of isolated authentication failures.</div>
+              </div>
+              <div class="filters">
+                <span class="mono-muted" style="font-size:8px">SEVERITY</span>
+                <select id="severityFilter" onchange="filterIncidents()">
+                  <option value="ALL">ALL</option>
+                  <option value="P1">P1 — CRITICAL</option>
+                  <option value="P2">P2 — HIGH</option>
+                  <option value="P3">P3 — MEDIUM</option>
+                  <option value="P4">P4 — LOW</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Incident</th>
+                    <th>Timestamp</th>
+                    <th>Source</th>
+                    <th>Target</th>
+                    <th>MITRE</th>
+                    <th>Severity</th>
+                    <th>Risk</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="incidentTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- RISK -->
+        <div class="tab-panel" id="panel-risk">
+          <div class="risk-grid" id="risk">
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">COMBINATORIAL BREACH MODEL</div>
+                  <div class="panel-subtitle">Discrete probability model for password-spraying attack spaces.</div>
+                </div>
+                <span class="purple" style="font-size:9px">P&amp;C ENGINE</span>
+              </div>
+
+              <div class="panel-body">
+                <div class="sliders">
+                  <div class="slider-row">
+                    <div class="slider-label">
+                      <span>DIRECTORY USER ACCOUNTS (N)</span>
+                      <span class="slider-value" id="valN">500</span>
+                    </div>
+                    <input id="sliderN" type="range" min="50" max="5000" step="50" value="500" oninput="calculatePnC()">
+                    <div class="range-meta"><span>50 USERS</span><span>5,000 USERS</span></div>
+                  </div>
+
+                  <div class="slider-row">
+                    <div class="slider-label">
+                      <span>WEAK PASSWORDS / ACCOUNT (K)</span>
+                      <span class="slider-value amber" id="valK">3</span>
+                    </div>
+                    <input id="sliderK" type="range" min="1" max="25" step="1" value="3" oninput="calculatePnC()">
+                    <div class="range-meta"><span>1 ATTEMPT</span><span>25 ATTEMPTS</span></div>
+                  </div>
+
+                  <div class="slider-row">
+                    <div class="slider-label">
+                      <span>DICTIONARY SIZE (M)</span>
+                      <span class="slider-value cyan" id="valM">1000</span>
+                    </div>
+                    <input id="sliderM" type="range" min="100" max="10000" step="100" value="1000" oninput="calculatePnC()">
+                    <div class="range-meta"><span>100 PASSWORDS</span><span>10,000 PASSWORDS</span></div>
+                  </div>
+                </div>
+
+                <div class="formula">
+                  <strong>MODEL</strong><br>
+                  Individual guess probability: <span class="green">p = k / M</span><br>
+                  Systemic breach probability:
+                  <span class="green">P = 1 - (1 - k/M)<sup>N</sup></span><br><br>
+                  Tested target-password pairs:
+                  <span class="cyan">C = N × k</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">SYSTEMIC RISK</div>
+                  <div class="panel-subtitle">Dynamic probability assessment</div>
+                </div>
+              </div>
+
+              <div class="panel-body risk-result">
+                <div style="width:100%">
+                  <div class="gauge" id="gauge">
+                    <div class="gauge-content">
+                      <span class="probability" id="resProb">77.7%</span>
+                      <div class="risk-tier" id="resRiskTier">ELEVATED RISK</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="result-stats">
+                  <div class="result-row">
+                    <span>TESTED PAIRS (C)</span>
+                    <b id="resCombinations">1,500</b>
+                  </div>
+                  <div class="result-row">
+                    <span>SINGLE ACCOUNT RISK (P)</span>
+                    <b id="resSingleRisk">0.30%</b>
+                  </div>
+                  <div class="result-row">
+                    <span>RECOMMENDED ACTION</span>
+                    <b class="amber" id="resAction">ENFORCE FIDO2 / MFA</b>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================
+       FORENSIC MODAL
+       ========================================================= -->
+  <div class="modal-backdrop" id="modalBackdrop" onclick="closeModal(event)">
+    <div class="modal">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title green" id="modalTitle">INCIDENT FORENSICS</div>
+          <div class="panel-subtitle">Correlated attack story / local evidence</div>
+        </div>
+        <button class="btn" onclick="closeModal()">CLOSE</button>
+      </div>
+
+      <div class="modal-body">
+        <div id="modalDescription"></div>
+        <div class="modal-grid" id="modalStats"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       FOOTER
+       ========================================================= -->
+  <footer>
+    <div class="container footer-inner">
+      <div>
+        <div class="footer-brand">BANKAI // VPNGuard</div>
+        <div style="margin-top:5px">AUTHENTICATION SECURITY OPERATIONS PLATFORM</div>
+      </div>
+
+      <div class="footer-status">
+        <span class="status-dot"></span>
+        AIR-GAPPED / ZERO CLOUD / LOCAL
+      </div>
+
+      <div id="clockDisplay">2026-09-27 13:59:00 IST</div>
+    </div>
+  </footer>
+
+  <script>
+    /* =========================================================
+       BANKAI DESIGN TEMPLATE — INTERACTION LAYER
+       Replace / merge this section with your existing engine
+       logic if you want to retain the original prototype's
+       exact data model and algorithms.
+       ========================================================= */
+
+    const incidents = [
+      {
+        id: "INC-001",
+        time: "09:05:42",
+        source: "10.0.0.24 /24",
+        target: "86 accounts",
+        mitre: "T1110.003",
+        severity: "P1",
+        risk: 94,
+        description: "Coordinated password-spray campaign detected across 86 directory accounts. Failure velocity crossed the rolling anomaly threshold and correlated with repeated weak-password attempts."
+      },
+      {
+        id: "INC-002",
+        time: "08:30:18",
+        source: "10.0.0.81 /24",
+        target: "34 accounts",
+        mitre: "T1110.001",
+        severity: "P2",
+        risk: 78,
+        description: "Brute-force sequence correlated across multiple source addresses. Repeated failures were concentrated against a small target set."
+      },
+      {
+        id: "INC-003",
+        time: "08:12:06",
+        source: "10.0.0.42 /24",
+        target: "12 accounts",
+        mitre: "T1078",
+        severity: "P3",
+        risk: 54,
+        description: "Valid-account activity followed an unusual authentication pattern and was escalated for contextual review."
+      },
+      {
+        id: "INC-004",
+        time: "07:46:31",
+        source: "10.0.0.16 /24",
+        target: "7 accounts",
+        mitre: "T1110",
+        severity: "P4",
+        risk: 31,
+        description: "Low-volume failed authentication burst. Current evidence does not indicate a coordinated campaign."
+      }
+    ];
+
+    const baseFeed = [
+      ["09:05:42", "PASSWORD SPRAY DETECTED", "45 failed attempts / 86 accounts", "P1", "red"],
+      ["09:04:57", "T1110.003 CORRELATION", "Failure velocity crossed campaign threshold", "T1110", "amber"],
+      ["08:30:18", "BRUTE FORCE SEQUENCE", "Repeated failures from 10.0.0.81/24", "P2", "red"],
+      ["08:12:06", "VALID ACCOUNT ANOMALY", "Unusual authentication context", "T1078", "cyan"],
+      ["07:46:31", "LOW-VOLUME BURST", "Monitoring / no escalation", "P4", "muted"]
+    ];
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function switchTab(tab) {
+      const tabs = ["overview", "incidents", "risk"];
+
+      tabs.forEach(name => {
+        document.getElementById("panel-" + name).classList.toggle("active", name === tab);
+        document.getElementById("tab-" + name).classList.toggle("active", name === tab);
+      });
+
+      if (tab === "overview") drawTimeline();
+      if (tab === "incidents") filterIncidents();
+    }
+
+    function renderFeed(extra = null) {
+      const feed = document.getElementById("realtimeAlertList");
+      const items = extra ? [extra, ...baseFeed] : baseFeed;
+
+      feed.innerHTML = items.map(item => `
+        <div class="feed-item">
+          <div class="feed-line">
+            <span class="${item[4] === "red" ? "red" : item[4] === "amber" ? "amber" : item[4] === "cyan" ? "cyan" : "mono-muted"}">${item[0]}</span>
+            <span class="${item[4] === "red" ? "red" : item[4] === "amber" ? "amber" : item[4] === "cyan" ? "cyan" : "mono-muted"}">${item[3]}</span>
+          </div>
+          <div class="feed-title">${item[1]}</div>
+          <div class="feed-detail">${item[2]}</div>
+        </div>
+      `).join("");
+    }
+
+    function filterIncidents() {
+      const filter = document.getElementById("severityFilter").value;
+      const body = document.getElementById("incidentTableBody");
+
+      const filtered = filter === "ALL"
+        ? incidents
+        : incidents.filter(x => x.severity === filter);
+
+      body.innerHTML = filtered.map(x => `
+        <tr>
+          <td style="color:#fff;font-weight:700">${x.id}</td>
+          <td>${x.time}</td>
+          <td>${x.source}</td>
+          <td>${x.target}</td>
+          <td class="cyan">${x.mitre}</td>
+          <td><span class="severity ${severityClass(x.severity)}">${x.severity}</span></td>
+          <td class="${x.risk >= 80 ? "red" : x.risk >= 60 ? "amber" : "green"}">${x.risk}/100</td>
+          <td><button class="action-link" onclick="openForensics('${x.id}')">OPEN →</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function severityClass(s) {
+      if (s === "P1") return "red";
+      if (s === "P2") return "amber";
+      if (s === "P3") return "cyan";
+      return "green";
+    }
+
+    function openForensics(id) {
+      const incident = incidents.find(x => x.id === id);
+      if (!incident) return;
+
+      document.getElementById("modalTitle").textContent = incident.id + " / FORENSIC DETAIL";
+      document.getElementById("modalDescription").textContent = incident.description;
+
+      document.getElementById("modalStats").innerHTML = `
+        <div class="modal-stat"><span>TIMESTAMP</span><b>${incident.time}</b></div>
+        <div class="modal-stat"><span>SOURCE</span><b>${incident.source}</b></div>
+        <div class="modal-stat"><span>TARGET SCOPE</span><b>${incident.target}</b></div>
+        <div class="modal-stat"><span>MITRE ATT&CK</span><b class="cyan">${incident.mitre}</b></div>
+        <div class="modal-stat"><span>SEVERITY</span><b class="${severityClass(incident.severity)}">${incident.severity}</b></div>
+        <div class="modal-stat"><span>RISK SCORE</span><b>${incident.risk}/100</b></div>
+      `;
+
+      document.getElementById("modalBackdrop").classList.add("open");
+    }
+
+    function closeModal(event) {
+      if (event && event.target !== document.getElementById("modalBackdrop")) return;
+      document.getElementById("modalBackdrop").classList.remove("open");
+    }
+
+    function triggerSpraySimulation() {
+      const total = document.getElementById("kpiTotalEvents");
+      const threats = document.getElementById("kpiActiveThreats");
+      const critical = document.getElementById("kpiCritical");
+
+      total.textContent = "1,329";
+      threats.textContent = "52";
+      critical.textContent = "03";
+
+      renderFeed([
+        new Date().toLocaleTimeString("en-GB"),
+        "SIMULATED PASSWORD SPRAY",
+        "Synthetic 45-account attack injected into telemetry stream",
+        "P1",
+        "red"
+      ]);
+
+      drawTimeline(true);
+      switchTab("overview");
+    }
+
+    function resetDataset() {
+      document.getElementById("kpiTotalEvents").textContent = "1,284";
+      document.getElementById("kpiActiveThreats").textContent = "45";
+      document.getElementById("kpiCritical").textContent = "02";
+      renderFeed();
+      drawTimeline();
+    }
+
+    function calculatePnC() {
+      const N = Number(document.getElementById("sliderN").value);
+      const K = Number(document.getElementById("sliderK").value);
+      const M = Number(document.getElementById("sliderM").value);
+
+      const p = K / M;
+      const probability = 1 - Math.pow(1 - p, N);
+      const percent = probability * 100;
+      const combinations = N * K;
+
+      document.getElementById("valN").textContent = N.toLocaleString();
+      document.getElementById("valK").textContent = K.toLocaleString();
+      document.getElementById("valM").textContent = M.toLocaleString();
+
+      document.getElementById("resProb").textContent =
+        percent < 0.01 ? percent.toFixed(4) + "%" : percent.toFixed(1) + "%";
+
+      document.getElementById("resSingleRisk").textContent =
+        (p * 100).toFixed(2) + "%";
+
+      document.getElementById("resCombinations").textContent =
+        combinations.toLocaleString();
+
+      let tier = "LOW RISK";
+      let action = "CONTINUE MONITORING";
+      let color = "#00ff66";
+
+      if (percent >= 75) {
+        tier = "CRITICAL RISK";
+        action = "ENFORCE FIDO2 / MFA";
+        color = "#ff3158";
+      } else if (percent >= 40) {
+        tier = "ELEVATED RISK";
+        action = "ENFORCE MFA / RATE LIMITING";
+        color = "#ffb000";
+      } else if (percent >= 15) {
+        tier = "MODERATE RISK";
+        action = "HARDEN PASSWORD POLICY";
+        color = "#00e5ff";
+      }
+
+      document.getElementById("resRiskTier").textContent = tier;
+      document.getElementById("resAction").textContent = action;
+      document.getElementById("resProb").style.color = color;
+      document.getElementById("resRiskTier").style.color = color;
+      document.getElementById("gauge").style.setProperty("--gauge", Math.min(percent, 100) + "%");
+      document.getElementById("gauge").style.background =
+        `radial-gradient(circle, #0a0d0a 58%, transparent 59%), conic-gradient(${color} ${Math.min(percent,100)}%, rgba(255,255,255,.075) 0)`;
+    }
+
+    function drawTimeline(injected = false) {
+      const canvas = document.getElementById("timelineCanvas");
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+
+      if (!rect.width || !rect.height) return;
+
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+
+      const ctx = canvas.getContext("2d");
+      ctx.scale(dpr, dpr);
+
+      const w = rect.width;
+      const h = rect.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = { left: 34, right: 18, top: 18, bottom: 30 };
+      const cw = w - pad.left - pad.right;
+      const ch = h - pad.top - pad.bottom;
+
+      // grid
+      ctx.strokeStyle = "rgba(255,255,255,.06)";
+      ctx.lineWidth = 1;
+
+      for (let i = 0; i <= 5; i++) {
+        const y = pad.top + ch * (i / 5);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(w - pad.right, y);
+        ctx.stroke();
+      }
+
+      for (let i = 0; i <= 8; i++) {
+        const x = pad.left + cw * (i / 8);
+        ctx.beginPath();
+        ctx.moveTo(x, pad.top);
+        ctx.lineTo(x, h - pad.bottom);
+        ctx.stroke();
+      }
+
+      // labels
+      ctx.fillStyle = "rgba(154,161,156,.55)";
+      ctx.font = "8px JetBrains Mono";
+      for (let i = 0; i <= 5; i++) {
+        const y = pad.top + ch * (i / 5);
+        ctx.fillText(String(100 - i * 20), 4, y + 3);
+      }
+
+      const success = [45,48,44,51,47,49,54,50,52,48,55,53,58,56,54,59,61,57,62,60,64,63,66,61];
+      const failures = [8,7,10,9,8,12,11,13,12,14,13,16,18,20,18,26,34,44,67,52,38,27,21,18];
+
+      function plot(values, stroke, width = 2) {
+        ctx.beginPath();
+        values.forEach((value, i) => {
+          const x = pad.left + (i / (values.length - 1)) * cw;
+          const y = pad.top + ch - (value / 100) * ch;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = width;
+        ctx.shadowColor = stroke;
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      plot(success, "#00ff66", 1.6);
+      plot(failures, injected ? "#ff3158" : "#ff3158", 2);
+
+      // attack spike markers
+      [16, 18, 19].forEach((i, n) => {
+        const x = pad.left + (i / 23) * cw;
+        ctx.strokeStyle = n === 2 ? "rgba(255,49,88,.7)" : "rgba(255,176,0,.55)";
+        ctx.setLineDash([4,4]);
+        ctx.beginPath();
+        ctx.moveTo(x, pad.top);
+        ctx.lineTo(x, h - pad.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+
+      // x labels
+      ["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00"].forEach((label, i) => {
+        const x = pad.left + (i / 8) * cw;
+        ctx.fillStyle = "rgba(115,122,117,.8)";
+        ctx.fillText(label, x - 14, h - 8);
+      });
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const formatted = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+      }).format(now).replace(",", "");
+
+      document.getElementById("clockDisplay").textContent = formatted + " IST";
+    }
+
+    window.addEventListener("resize", drawTimeline);
+
+    renderFeed();
+    filterIncidents();
+    calculatePnC();
+    drawTimeline();
+    updateClock();
+    setInterval(updateClock, 1000);
+  </script>
+</body>
+</html>
