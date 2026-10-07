@@ -1,0 +1,31 @@
+Project Impact
+•	Drastic Reduction in Alert Fatigue: Transforms thousands of noisy, disconnected failed-login events into unified, contextualized high-confidence security incidents. 
+
+•	Advanced Threat Detection: Uncovers stealthy, low-velocity password-spraying campaigns (MITRE ATT&CK T1110.003) and distributed attacks that easily bypass standard static account-lockout thresholds. 
+
+•	Operational Efficiency: Equips Security Operations Center (SOC) analysts with comprehensive attack stories, reducing investigation time and streamlining triage workflows. 
+
+•	Privacy-First & Air-Gapped Security: Operates locally without sending sensitive corporate authentication logs to third-party cloud services, eliminating data egress and vendor lock-in risks. 
+
+Project Scalability
+•	Lightweight Resource Footprint: Powered by an optimized Python, FastAPI, Pandas, and SQLite stack that runs efficiently on standard workstations or small local servers. 
+
+•	Seamless Database Upgrade Path: Designed with a smooth architectural transition from SQLite (ideal for local prototypes and hackathons) to PostgreSQL for production environments handling heavy enterprise traffic. 
+
+•	Modular Detection Architecture: Combines rule-based heuristics with unsupervised Machine Learning (Isolation Forest) and combinatoric modeling, allowing individual detection components to be independently tuned or scaled. 
+
+•	Flexible Log Ingestion Pipeline: Normalizes heterogeneous authentication formats from VPN gateways, SSO providers, and identity directories into a unified data schema, enabling easy incorporation of new log sources. 
+RESOURCED USED	
+https://attack.mitre.org/techniques/T1110/003/
+
+https://attack.mitre.org/detectionstrategies/DET0487/
+
+https://learn.microsoft.com/en-in/entra/id-protection/overview-identity-protection
+
+
+https://learn.microsoft.com/en-in/security/operations/incident-response-playbook-password-spray
+
+https://learn.microsoft.com/en-us/entra/id-protection/concept-risk-detection-types
+
+https://d3fend.mitre.org/offensive-technique/attack/T1110.003/
+
